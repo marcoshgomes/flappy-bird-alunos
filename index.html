@@ -2,7 +2,9 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Flappy Bird Aula - Web (Velocidade Ajustada)</title>
+    <!-- A linha abaixo impede que o navegador dê zoom ao clicar repetidamente no tablet -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Flappy Bird Aula - Versão Dinâmica</title>
     <style>
         body {
             margin: 0;
@@ -13,11 +15,17 @@
             align-items: center;
             height: 100vh;
             font-family: Arial, sans-serif;
+            /* Impede seleção de texto e comportamentos de toque padrão */
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
         }
         canvas {
             border: 2px solid #000;
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            background-color: #70c5ce; /* Cor de fundo caso a imagem demore a carregar */
+            background-color: #70c5ce;
+            /* Garante que o toque no canvas não arraste a tela */
+            touch-action: none;
         }
     </style>
 </head>
@@ -26,52 +34,39 @@
 <canvas id="gameCanvas"></canvas>
 
 <script>
-/**
- * CONFIGURAÇÕES GERAIS
- */
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 canvas.width = 800;
 canvas.height = 600;
 
-// Variáveis de controle de tempo (FPS)
-let fps = 30; // VELOCIDADE DO JOGO AQUI (Aumente para 60 se quiser mais liso)
+// --- VARIÁVEIS DE VELOCIDADE DINÂMICA ---
+let fpsBase = 30; 
+let fpsAtual = 30;
+let velocidadeCanoBase = 4;
+let velocidadeAtual = 4; // Essa velocidade vai aumentar
 let agora;
 let depois = Date.now();
-let intervalo = 1000 / fps;
+let intervalo = 1000 / fpsAtual;
 let delta;
 
-// Assets
 const imgs = {};
 const nomesImagens = ['bg', 'base', 'pipe', 'bird1', 'bird2', 'bird3'];
 let imagensCarregadas = 0;
 
-// Variáveis Globais do Jogo
 let passaro, canos, pontos, rodando, chaoX, teclaDireita;
 
-/**
- * CARREGAMENTO DE IMAGENS
- */
 function carregarImagens() {
     nomesImagens.forEach(nome => {
         imgs[nome] = new Image();
         imgs[nome].src = `imgs/${nome}.png`;
         imgs[nome].onload = () => {
             imagensCarregadas++;
-            if (imagensCarregadas === nomesImagens.length) {
-                setup(); // Inicia o jogo quando todas as imagens carregarem
-            }
-        };
-        imgs[nome].onerror = () => {
-            console.error(`Erro ao carregar a imagem: ${nome}.png na pasta imgs/`);
+            if (imagensCarregadas === nomesImagens.length) setup();
         };
     });
 }
 
-/**
- * CLASSE PÁSSARO
- */
 class Passaro {
     constructor() {
         this.x = 70;
@@ -83,7 +78,7 @@ class Passaro {
     }
 
     pular() {
-        this.velocidade = -8; // Força do pulo
+        this.velocidade = -8;
         this.tempo = 0;
     }
 
@@ -94,25 +89,21 @@ class Passaro {
             this.tempo = 0;
         } else {
             this.tempo++;
-            // Gravidade simulada
-            let deslocamento = 0.6 * (this.tempo) + this.velocidade;
+            // A gravidade também aumenta levemente com a velocidade para o jogo não ficar "bobo"
+            let gravidadeAjustada = 0.6 + (velocidadeAtual - 4) * 0.05;
+            let deslocamento = gravidadeAjustada * (this.tempo) + this.velocidade;
             
-            if (deslocamento > 12) deslocamento = 12; // Velocidade máxima de queda
+            if (deslocamento > 12) deslocamento = 12;
             this.y += deslocamento;
 
-            // Rotação
-            if (deslocamento < 0) {
-                this.angulo = -25;
-            } else {
-                this.angulo = Math.min(this.angulo + 3, 70);
-            }
+            if (deslocamento < 0) this.angulo = -25;
+            else this.angulo = Math.min(this.angulo + 3, 70);
         }
     }
 
     desenhar() {
         this.contagemAnimacao++;
         let imgPassaro;
-        // Alterna entre bird1, bird2 e bird3 para animar as asas
         if (this.contagemAnimacao % 12 < 4) imgPassaro = imgs.bird1;
         else if (this.contagemAnimacao % 12 < 8) imgPassaro = imgs.bird2;
         else imgPassaro = imgs.bird3;
@@ -125,39 +116,32 @@ class Passaro {
     }
 }
 
-/**
- * CLASSE CANO
- */
 class Cano {
     constructor(x) {
         this.x = x;
         this.largura = 80;
-        this.distancia = 180; // Espaço entre os canos
-        this.velocidade = 4;   // Velocidade horizontal (ajuste aqui)
+        this.distancia = 180;
         this.passou = false;
         this.alturaTopo = Math.random() * (350 - 100) + 100;
     }
 
     mover() {
-        this.x -= this.velocidade;
+        // Usa a velocidade atual que aumenta com o tempo
+        this.x -= velocidadeAtual;
     }
 
     desenhar() {
-        // Cano de cima
         ctx.save();
         ctx.translate(this.x + this.largura, this.alturaTopo);
         ctx.rotate(Math.PI);
         ctx.drawImage(imgs.pipe, 0, 0, this.largura, 600);
         ctx.restore();
-
-        // Cano de baixo
         ctx.drawImage(imgs.pipe, this.x, this.alturaTopo + this.distancia, this.largura, 600);
     }
 
     colidir(p) {
-        // Colisão simplificada por retângulo (Hitbox)
-        if (p.x + 35 > this.x && p.x < this.x + this.largura) {
-            if (p.y < this.alturaTopo || p.y + 25 > this.alturaTopo + this.distancia) {
+        if (p.x + 30 > this.x && p.x < this.x + this.largura) {
+            if (p.y < this.alturaTopo || p.y + 22 > this.alturaTopo + this.distancia) {
                 return true;
             }
         }
@@ -165,123 +149,111 @@ class Cano {
     }
 }
 
-/**
- * LÓGICA PRINCIPAL
- */
 function setup() {
     passaro = new Passaro();
     canos = [new Cano(900)];
     pontos = 0;
     chaoX = 0;
+    velocidadeAtual = velocidadeCanoBase; // Reseta a velocidade ao iniciar
     rodando = true;
     teclaDireita = false;
     loop();
 }
 
 function loop() {
-    // ESTA É A PARTE QUE CONTROLA A VELOCIDADE
     requestAnimationFrame(loop);
-
     agora = Date.now();
     delta = agora - depois;
 
     if (delta > intervalo) {
         depois = agora - (delta % intervalo);
-
         if (!rodando) return;
 
-        // 1. Mover Pássaro
         passaro.mover(teclaDireita);
         
-        // 2. Gerar Novos Canos
-        if (canos[canos.length - 1].x < 500) {
+        // Gerar canos - a distância de spawn diminui conforme corre para não encavalar
+        let spawnCheck = 500 - (velocidadeAtual * 10); 
+        if (canos[canos.length - 1].x < (spawnCheck < 300 ? 300 : spawnCheck)) {
             canos.push(new Cano(850));
         }
 
-        // 3. Mover e Checar Canos
         canos.forEach((cano, index) => {
             cano.mover();
-            
-            // Checar Colisão
-            if (cano.colidir(passaro)) {
-                reiniciar();
-            }
+            if (cano.colidir(passaro)) reiniciar();
 
-            // Marcar Ponto
             if (!cano.passou && passaro.x > cano.x) {
                 cano.passou = true;
                 pontos++;
+                
+                // --- LÓGICA DE ACELERAÇÃO (A cada 5 pontos) ---
+                if (pontos > 0 && pontos % 5 === 0) {
+                    velocidadeAtual += 0.6; // Aumenta a velocidade horizontal
+                    console.log("Velocidade aumentada para: " + velocidadeAtual);
+                }
             }
-
-            // Remover canos que saíram da tela
             if (cano.x < -100) canos.splice(index, 1);
         });
 
-        // 4. Checar Chão e Teto
-        if (passaro.y > 530 || passaro.y < -50) {
-            reiniciar();
-        }
+        if (passaro.y > 530 || passaro.y < -50) reiniciar();
 
-        // 5. Mover Chão Infinito
-        chaoX = (chaoX - 4) % canvas.width;
-
-        // 6. Desenhar tudo
+        chaoX = (chaoX - velocidadeAtual) % canvas.width;
         desenhar();
     }
 }
 
 function desenhar() {
-    // Limpar fundo
     ctx.drawImage(imgs.bg, 0, 0, canvas.width, canvas.height);
-
-    // Canos
     canos.forEach(cano => cano.desenhar());
-
-    // Chão (duas imagens para o efeito infinito)
     ctx.drawImage(imgs.base, chaoX, 530, canvas.width, 70);
     ctx.drawImage(imgs.base, chaoX + canvas.width, 530, canvas.width, 70);
-
-    // Pássaro
     passaro.desenhar();
 
-    // Placar
     ctx.fillStyle = "white";
     ctx.strokeStyle = "black";
     ctx.lineWidth = 2;
     ctx.font = "bold 40px Arial";
     ctx.fillText(`Pontos: ${pontos}`, canvas.width - 220, 50);
     ctx.strokeText(`Pontos: ${pontos}`, canvas.width - 220, 50);
+    
+    // Feedback visual da velocidade para os alunos
+    if (velocidadeAtual > velocidadeCanoBase) {
+        ctx.font = "bold 15px Arial";
+        ctx.fillText("VELOCIDADE AUMENTADA!", 20, 30);
+    }
 }
 
 function reiniciar() {
     rodando = false;
-    // Pequeno atraso para o aluno ver que morreu (igual ao Pygame)
     setTimeout(setup, 1000);
 }
 
-/**
- * ENTRADA DO USUÁRIO
+/** 
+ * AJUSTE PARA TABLET E CONTROLES
  */
+// Função única para pular usada por mouse, teclado e toque
+function acaoPular(e) {
+    if (e) e.preventDefault(); // IMPORTANTE: Impede o zoom e scroll no tablet
+    if (rodando) passaro.pular();
+}
+
+// Evento de Toque (Tablet/Celular)
+window.addEventListener("touchstart", acaoPular, { passive: false });
+
+// Evento de Teclado
 window.addEventListener("keydown", (e) => {
-    if (e.code === "Space") {
-        passaro.pular();
-        e.preventDefault(); // Evita que a barra de espaço role a página
-    }
+    if (e.code === "Space") acaoPular(e);
     if (e.code === "ArrowRight") teclaDireita = true;
 });
-
 window.addEventListener("keyup", (e) => {
     if (e.code === "ArrowRight") teclaDireita = false;
 });
 
-// Suporte a clique do mouse / toque na tela (opcional)
-canvas.addEventListener("mousedown", () => {
-    if (rodando) passaro.pular();
+// Evento de Clique do Mouse
+canvas.addEventListener("mousedown", (e) => {
+    if (e.button === 0) acaoPular(e);
 });
 
-// Iniciar o processo de carregamento
 carregarImagens();
-
 </script>
 </body>
 </html>
