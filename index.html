@@ -2,40 +2,55 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Flappy Bird Pro - Sistema Completo</title>
+    <!-- Meta tag crucial para dispositivos móveis -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Flappy Bird Pro - Responsivo</title>
     <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent; /* Remove o brilho azul ao tocar no celular */
+        }
+
         body {
             margin: 0;
+            padding: 0;
             overflow: hidden;
-            background: #222;
+            background: #111; /* Fundo escuro para destacar o jogo */
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
+            width: 100vw;
             font-family: 'Arial', sans-serif;
             touch-action: none;
             user-select: none;
         }
+
+        /* O segredo da responsividade está aqui */
         canvas {
-            border: 4px solid #333;
-            box-shadow: 0 0 30px rgba(0,0,0,0.7);
             background-color: #70c5ce;
+            border: 2px solid #333;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            
+            /* Ajusta o canvas para caber em qualquer tela mantendo a proporção */
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain; /* Garante que o jogo não estique */
         }
     </style>
 </head>
 <body>
 
-<canvas id="gameCanvas"></canvas>
+<!-- O canvas continua com 800x600 internamente -->
+<canvas id="gameCanvas" width="800" height="600"></canvas>
 
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-canvas.width = 800;
-canvas.height = 600;
-
-// --- CONFIGURAÇÕES DE DIFICULDADE ---
+// --- CONFIGURAÇÕES E ESTADOS ---
 const DIFICULDADES = {
     0: { nome: "Iniciante", velBase: 4, accel: 0.6 },
     1: { nome: "Experiente", velBase: 4.8, accel: 0.72 },
@@ -43,14 +58,11 @@ const DIFICULDADES = {
 };
 
 let dificuldadeSelecionada = 0;
-let estadoJogo = "MENU"; // "MENU", "JOGANDO" ou "GAME_OVER"
-
-// Variáveis de tempo
+let estadoJogo = "MENU";
 let fps = 30;
 let agora, delta, depois = Date.now();
 let intervalo = 1000 / fps;
 
-// Assets
 const imgs = {};
 const nomesImagens = ['bg', 'base', 'pipe', 'bird1', 'bird2', 'bird3'];
 let imagensCarregadas = 0;
@@ -79,13 +91,11 @@ class Passaro {
         this.velocidade = -8;
         this.tempo = 0;
     }
-    // REESTABELECIDA: Função mover agora aceita o parâmetro de estabilização
     mover(estabilizado) {
         if (estabilizado) {
             this.velocidade = 0;
             this.angulo = 0;
             this.tempo = 0;
-            // O pássaro fica parado no ar (estabilizado)
         } else {
             this.tempo++;
             let gravidade = 0.6 + (velocidadeAtual - 4) * 0.05;
@@ -141,64 +151,61 @@ function iniciarJogo() {
 }
 
 function desenharCenaJogo() {
-    ctx.drawImage(imgs.bg, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(imgs.bg, 0, 0, 800, 600);
     canos.forEach(c => c.desenhar());
-    ctx.drawImage(imgs.base, chaoX, 530, canvas.width, 70);
-    ctx.drawImage(imgs.base, chaoX + canvas.width, 530, canvas.width, 70);
+    ctx.drawImage(imgs.base, chaoX, 530, 800, 70);
+    ctx.drawImage(imgs.base, chaoX + 800, 530, 800, 70);
     passaro.desenhar();
     
     ctx.fillStyle = "white";
     ctx.textAlign = "left";
     ctx.font = "bold 25px Arial";
-    ctx.fillText(`Pontos: ${pontos} | Nível: ${DIFICULDADES[dificuldadeSelecionada].nome}`, 20, 40);
+    ctx.fillText(`Pts: ${pontos} | ${DIFICULDADES[dificuldadeSelecionada].nome}`, 20, 40);
 }
 
 function desenharMenu() {
-    ctx.drawImage(imgs.bg, 0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(imgs.bg, 0, 0, 800, 600);
+    ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+    ctx.fillRect(0, 0, 800, 600);
 
     ctx.fillStyle = "white";
     ctx.textAlign = "center";
-    ctx.font = "bold 45px Arial";
-    ctx.fillText("PAINEL DE CONTROLE", canvas.width/2, 100);
+    ctx.font = "bold 42px Arial";
+    ctx.fillText("FLAPPY BIRD ACADEMY", 400, 100);
     
-    ctx.font = "20px Arial";
+    ctx.font = "22px Arial";
     ctx.fillStyle = "#FFD700";
-    ctx.fillText("Instrução: Pressione ESPAÇO para saltar", canvas.width/2, 160);
+    ctx.fillText("ESPAÇO ou TOQUE para saltar", 400, 160);
 
     ctx.fillStyle = "white";
-    ctx.font = "25px Arial";
-    ctx.fillText("SELECIONE O PERFIL:", canvas.width/2, 250);
+    ctx.font = "28px Arial";
+    ctx.fillText("ESCOLHA O NÍVEL:", 400, 260);
 
     for (let i = 0; i < 3; i++) {
-        let selecionado = (dificuldadeSelecionada === i);
-        ctx.fillStyle = selecionado ? "#4CAF50" : "#888";
-        ctx.font = selecionado ? "bold 35px Arial" : "25px Arial";
-        ctx.fillText((selecionado ? "> " : "") + DIFICULDADES[i].nome, canvas.width/2, 310 + (i * 50));
+        let sel = (dificuldadeSelecionada === i);
+        ctx.fillStyle = sel ? "#4CAF50" : "#999";
+        ctx.font = sel ? "bold 38px Arial" : "28px Arial";
+        ctx.fillText((sel ? "● " : "") + DIFICULDADES[i].nome, 400, 320 + (i * 55));
     }
 
-    ctx.fillStyle = "white";
     ctx.font = "18px Arial";
-    ctx.fillText("Setas p/ escolher | ESC p/ INICIAR | SETA DIR. p/ estabilizar", canvas.width/2, 520);
+    ctx.fillStyle = "#ccc";
+    ctx.fillText("Use SETAS e ESC (ou toque no ícone)", 400, 530);
 }
 
 function desenharGameOver() {
     desenharCenaJogo();
-    ctx.fillStyle = "rgba(200, 0, 0, 0.5)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+    ctx.fillStyle = "rgba(150, 0, 0, 0.6)";
+    ctx.fillRect(0, 0, 800, 600);
     ctx.fillStyle = "white";
     ctx.textAlign = "center";
-    ctx.font = "bold 70px Arial";
-    ctx.fillText("GAME OVER", canvas.width/2, canvas.height/2 - 20);
-    
-    ctx.font = "30px Arial";
-    ctx.fillText(`Total de Pontos: ${pontos}`, canvas.width/2, canvas.height/2 + 40);
-    
-    ctx.font = "bold 20px Arial";
+    ctx.font = "bold 75px Arial";
+    ctx.fillText("FIM DE JOGO", 400, 280);
+    ctx.font = "35px Arial";
+    ctx.fillText(`Pontuação: ${pontos}`, 400, 340);
+    ctx.font = "22px Arial";
     ctx.fillStyle = "#FFD700";
-    ctx.fillText("Pressione ESC para voltar ao Painel", canvas.width/2, canvas.height/2 + 100);
+    ctx.fillText("Toque ou pressione ESC para o menu", 400, 420);
 }
 
 function loop() {
@@ -209,15 +216,10 @@ function loop() {
     if (delta > intervalo) {
         depois = agora - (delta % intervalo);
 
-        if (estadoJogo === "MENU") {
-            desenharMenu();
-        } 
+        if (estadoJogo === "MENU") desenharMenu();
         else if (estadoJogo === "JOGANDO") {
-            // PASSANDO A VARIÁVEL teclaDireita PARA O MOVIMENTO
             passaro.mover(teclaDireita);
-
             if (canos[canos.length - 1].x < 500) canos.push(new Cano(850));
-
             canos.forEach((cano, index) => {
                 cano.mover();
                 if (cano.colidir(passaro)) estadoJogo = "GAME_OVER";
@@ -228,19 +230,21 @@ function loop() {
                 }
                 if (cano.x < -100) canos.splice(index, 1);
             });
-
             if (passaro.y > 530 || passaro.y < -50) estadoJogo = "GAME_OVER";
-            chaoX = (chaoX - velocidadeAtual) % canvas.width;
-            
+            chaoX = (chaoX - velocidadeAtual) % 800;
             desenharCenaJogo();
         } 
-        else if (estadoJogo === "GAME_OVER") {
-            desenharGameOver();
-        }
+        else if (estadoJogo === "GAME_OVER") desenharGameOver();
     }
 }
 
-// --- CONTROLES ATUALIZADOS ---
+// --- CONTROLES INTELIGENTES ---
+
+function handleInput(type) {
+    if (estadoJogo === "MENU") iniciarJogo();
+    else if (estadoJogo === "JOGANDO") passaro.pular();
+    else if (estadoJogo === "GAME_OVER") estadoJogo = "MENU";
+}
 
 window.addEventListener("keydown", (e) => {
     if (estadoJogo === "MENU") {
@@ -250,27 +254,30 @@ window.addEventListener("keydown", (e) => {
     } 
     else if (estadoJogo === "JOGANDO") {
         if (e.code === "Space") passaro.pular();
-        if (e.code === "ArrowRight") teclaDireita = true; // ATIVA ESTABILIZAÇÃO
+        if (e.code === "ArrowRight") teclaDireita = true;
         if (e.code === "Escape") estadoJogo = "MENU";
     } 
     else if (estadoJogo === "GAME_OVER") {
-        if (e.code === "Escape" || e.code === "Enter") {
-            estadoJogo = "MENU";
-        }
+        if (e.code === "Escape" || e.code === "Enter" || e.code === "Space") estadoJogo = "MENU";
     }
 });
 
 window.addEventListener("keyup", (e) => {
-    if (e.code === "ArrowRight") teclaDireita = false; // DESATIVA ESTABILIZAÇÃO
+    if (e.code === "ArrowRight") teclaDireita = false;
 });
 
-// Suporte para Tablet (clique para avançar)
-canvas.addEventListener("touchstart", (e) => {
+// Toque na tela adaptado para qualquer dispositivo
+window.addEventListener("touchstart", (e) => {
     e.preventDefault();
-    if (estadoJogo === "MENU") iniciarJogo();
-    else if (estadoJogo === "JOGANDO") passaro.pular();
-    else if (estadoJogo === "GAME_OVER") estadoJogo = "MENU";
+    handleInput();
 }, {passive: false});
+
+// Clique do mouse também funciona como toque
+window.addEventListener("mousedown", (e) => {
+    if (e.button === 0 && 'ontouchstart' in window === false) { 
+        handleInput();
+    }
+});
 
 carregarImagens();
 </script>
